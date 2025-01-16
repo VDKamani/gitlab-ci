@@ -1,0 +1,58 @@
+stages:
+  - build
+  - test
+  - deploy
+
+# Define the build job (runs on dev, stage, and prod branches)
+build:
+  stage: build
+  script:
+    - echo "Building project..."
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == "dev" || $CI_COMMIT_REF_NAME == "stage" || $CI_COMMIT_REF_NAME == "main"'
+
+# Define the test job (runs only on dev and stage branches)
+test:
+  stage: test
+  script:
+    - echo "Running tests..."
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == "dev" || $CI_COMMIT_REF_NAME == "stage"'
+
+# Define the deploy job for dev (runs only on dev branch)
+deploy_dev:
+  stage: deploy
+  script:
+    - echo "Deploying to dev environment..."
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == "dev"'
+
+# Define the deploy job for stage (runs only on stage branch)
+deploy_stage:
+  stage: deploy
+  script:
+    - echo "Deploying to staging environment..."
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == "stage"'
+
+# Define the deploy job for prod (runs only on prod branch, with a manual trigger)
+deploy_prod:
+  stage: deploy
+  script:
+    - echo "Deploying to production environment..."
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == "main"'
+  when: manual
+  allow_failure: false
+
+# Optional: A job to trigger manual approval before prod deployment
+trigger_prod:
+  stage: deploy
+  script:
+    - echo "Are you sure you want to deploy to production?"
+  when: manual
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == "main"'
+  allow_failure: false
+  before_script:
+    - echo "This is a manual trigger before the prod deploy job."

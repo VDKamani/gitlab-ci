@@ -1,0 +1,55 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  AWS_REGION: "ap-south-1"
+  IMAGE_NAME: "my-image"
+  REPOSITORY_NAME: "viral"
+  IMAGE_URI: "476659480876.dkr.ecr.ap-south-1.amazonaws.com/viral"
+
+build-and-push:
+  stage: build
+  image:
+    name: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - apk add --no-cache python3 py3-pip aws-cli  # Use APK to install AWS CLI
+  script:
+    - echo "Logging in to AWS ECR"
+    - aws --version
+    - aws ecr describe-repositories --region ap-south-1
+    - aws configure list
+    - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+
+    - echo "Building Docker image"
+    - docker build -t $IMAGE_NAME:latest .
+
+    - echo "Fetching ECR Repository URI"
+
+    - echo "Tagging Docker image"
+    - docker tag $IMAGE_NAME:latest $IMAGE_URI:latest
+
+    - echo "Pushing Docker image to ECR"
+    - docker push $IMAGE_URI:latest
+
+    - echo "Saving IMAGE_URI for deployment"
+    - echo "$IMAGE_URI" > image_uri.txt
+
+
+
+deploy:
+  stage: deploy
+  before_script:
+    - chmod 400 $SSH_KEY 
+  script:
+    - ssh -o StrictHostKeyChecking=no -T -i $SSH_KEY $EC2_USER@$EC2_HOST "
+        aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 476659480876.dkr.ecr.ap-south-1.amazonaws.com &&
+        docker ps -aq | xargs -r docker stop | xargs -r docker rm &&
+        docker run -d --name html-app -p 80:80 476659480876.dkr.ecr.ap-south-1.amazonaws.com/viral"
+
+
+
+
+

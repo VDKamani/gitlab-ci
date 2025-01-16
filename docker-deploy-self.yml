@@ -1,0 +1,31 @@
+stages:
+  - build
+  - deploy
+
+default:
+  tags:
+    - viral
+  
+
+variables:
+  AWS_REGION: "ap-south-1"
+  IMAGE_NAME: "my-image"
+  REPOSITORY_NAME: "viral"
+  IMAGE_URI: "476659480876.dkr.ecr.ap-south-1.amazonaws.com/viral"
+
+
+
+build-and-push:
+  stage: build
+  script:
+    - aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 476659480876.dkr.ecr.ap-south-1.amazonaws.com
+    - docker build -t viral .
+    - docker tag viral:latest 476659480876.dkr.ecr.ap-south-1.amazonaws.com/viral:latest
+    - docker push 476659480876.dkr.ecr.ap-south-1.amazonaws.com/viral:latest
+
+deploy:
+  stage: deploy
+  script:
+    - aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 476659480876.dkr.ecr.ap-south-1.amazonaws.com 
+    - docker ps -aq | xargs -r docker stop | xargs -r docker rm 
+    - docker run -d --name html-app -p 80:80 476659480876.dkr.ecr.ap-south-1.amazonaws.com/viral
